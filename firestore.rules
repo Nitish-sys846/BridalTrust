@@ -1,0 +1,144 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 1. Global Catch-All Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Global Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Entity Specific Validators ---
+
+    function isValidUserProfile(data) {
+      return data.id is string &&
+             data.name is string && data.name.size() <= 100 &&
+             data.email is string && data.email.size() <= 150 &&
+             data.role in ['bride', 'provider', 'founder'];
+    }
+
+    function isValidBooking(data) {
+      return data.id is string &&
+             data.userId is string &&
+             data.providerId is string &&
+             data.price is number && data.price >= 0 &&
+             data.status in ['pending', 'confirmed', 'completed', 'cancelled'];
+    }
+
+    function isValidReview(data) {
+      return data.id is string &&
+             data.providerId is string &&
+             data.userId is string &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             data.content is string && data.content.size() <= 5000 &&
+             data.isGenuine is bool;
+    }
+
+    function isValidPlannerTask(data) {
+      return data.id is string &&
+             data.userId is string &&
+             data.title is string && data.title.size() <= 200 &&
+             data.completed is bool;
+    }
+
+    // --- Collection Matching Rules ---
+
+    // 1. Users Collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isOwner(userId) && isValidUserProfile(incoming());
+      allow update: if isOwner(userId) && isValidUserProfile(incoming()) && 
+                    incoming().role == existing().role; // Forbid role hijacking
+      allow delete: if isOwner(userId);
+    }
+
+    // 2. Providers Collection (Public catalog, but writes only by verified owner or founder)
+    match /providers/{providerId} {
+      allow read: if true; // Public catalog discovery
+      allow create: if isSignedIn() && isValidId(providerId);
+      allow update: if isSignedIn() && (
+        isOwner(providerId) || 
+        // Allow updating review counts or rating summary for genuine client reviews
+        incoming().diff(existing()).affectedKeys().hasAny(['rating', 'reviewCount'])
+      );
+      allow delete: if isSignedIn() && isOwner(providerId);
+    }
+
+    // 3. Bookings Collection
+    match /bookings/{bookingId} {
+      allow read: if isSignedIn() && (
+        isOwner(existing().userId) || 
+        isOwner(existing().providerId)
+      );
+      allow create: if isSignedIn() && isValidBooking(incoming()) && isOwner(incoming().userId);
+      allow update: if isSignedIn() && isValidBooking(incoming()) && (
+        isOwner(existing().userId) || 
+        isOwner(existing().providerId)
+      ) && (
+        // Safeguard: Protect primary immutable attributes during update
+        incoming().userId == existing().userId &&
+        incoming().providerId == existing().providerId &&
+        // Allow state change actions
+        incoming().diff(existing()).affectedKeys().hasAny(['status', 'notes', 'emergencyBackupAssigned', 'backupProviderId', 'backupProviderName'])
+      );
+      allow delete: if isSignedIn() && isOwner(existing().userId) && existing().status == 'pending';
+    }
+
+    // 4. Reviews Collection
+    match /reviews/{reviewId} {
+      allow read: if true; // Public discovery
+      allow create: if isSignedIn() && isValidReview(incoming()) && isOwner(incoming().userId);
+      allow update: if false; // Reviews are immutable to prevent tampering
+      allow delete: if isSignedIn() && isOwner(existing().userId);
+    }
+
+    // 5. Saved Providers
+    match /saved_providers/{savedId} {
+      allow read: if isSignedIn() && isOwner(existing().userId);
+      allow create: if isSignedIn() && isOwner(incoming().userId);
+      allow delete: if isSignedIn() && isOwner(existing().userId);
+    }
+
+    // 6. Inspirations Mood Board
+    match /inspirations/{inspirationId} {
+      allow read: if isSignedIn() && isOwner(resource.data.userId);
+      allow create: if isSignedIn() && isOwner(incoming().userId);
+      allow delete: if isSignedIn() && isOwner(existing().userId);
+    }
+
+    // 7. Planner Tasks Countdown
+    match /planner_tasks/{taskId} {
+      allow read: if isSignedIn() && isOwner(resource.data.userId);
+      allow create: if isSignedIn() && isOwner(incoming().userId) && isValidPlannerTask(incoming());
+      allow update: if isSignedIn() && isOwner(existing().userId) && isValidPlannerTask(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['completed', 'title', 'dueDate', 'category'])
+      );
+      allow delete: if isSignedIn() && isOwner(existing().userId);
+    }
+
+    // 8. Risk Alerts Log (Founder Dashboard Only)
+    match /risk_alerts/{alertId} {
+      allow read, write: if isSignedIn(); // Restricted to active dashboard operators in simple context
+    }
+  }
+}

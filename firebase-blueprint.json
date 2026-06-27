@@ -1,0 +1,176 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Represents a bride, beauty provider, or founder account profile.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["bride", "provider", "founder"] },
+        "weddingDate": { "type": "string", "format": "date" },
+        "budget": { "type": "number" },
+        "location": { "type": "string" },
+        "preferences": { "type": "object" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "BeautyProvider": {
+      "title": "BeautyProvider",
+      "description": "Represents detailed portfolio, pricing, and ratings of a beauty professional.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "businessName": { "type": "string" },
+        "category": { "type": "string", "enum": ["Makeup", "Hair", "Stylist", "All-in-One"] },
+        "location": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviewCount": { "type": "number" },
+        "priceRange": { "type": "string" },
+        "basePrice": { "type": "number" },
+        "about": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "languages": { "type": "array" },
+        "portfolio": { "type": "array" },
+        "services": { "type": "array" },
+        "trustScore": { "type": "object" },
+        "availability": { "type": "array" }
+      },
+      "required": ["id", "name", "businessName", "category", "basePrice", "trustScore"]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Represents an interactive scheduling/booking event with stand-by emergency fallback.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "providerId": { "type": "string" },
+        "providerBusinessName": { "type": "string" },
+        "providerAvatar": { "type": "string" },
+        "date": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "completed", "cancelled"] },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "emergencyBackupAssigned": { "type": "boolean" },
+        "backupProviderId": { "type": "string" },
+        "backupProviderName": { "type": "string" }
+      },
+      "required": ["id", "userId", "providerId", "date", "serviceName", "price", "status"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "An interactive user-written rating, screened by the AI review analyzer.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "providerId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rating": { "type": "number" },
+        "content": { "type": "string" },
+        "date": { "type": "string" },
+        "isGenuine": { "type": "boolean" },
+        "suspiciousFlags": { "type": "array" },
+        "analysisReasoning": { "type": "string" }
+      },
+      "required": ["id", "providerId", "userId", "rating", "content", "isGenuine"]
+    },
+    "SavedProvider": {
+      "title": "SavedProvider",
+      "description": "Links a bride to their bookmarked hair/makeup professionals.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "providerId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "providerId"]
+    },
+    "Inspiration": {
+      "title": "Inspiration",
+      "description": "An entry in a bride's mood board/inspiration grid.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "tags": { "type": "array" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "userId", "imageUrl", "title"]
+    },
+    "PlannerTask": {
+      "title": "PlannerTask",
+      "description": "An item in the wedding countdown checklist.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "category": { "type": "string", "enum": ["Skincare", "Trial", "Booking", "General"] },
+        "completed": { "type": "boolean" }
+      },
+      "required": ["id", "userId", "title", "completed"]
+    },
+    "RiskAlert": {
+      "title": "RiskAlert",
+      "description": "System-generated alerts for review tampering or extreme cancellations.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "severity": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "targetId": { "type": "string" },
+        "targetName": { "type": "string" },
+        "date": { "type": "string" },
+        "resolved": { "type": "boolean" }
+      },
+      "required": ["id", "type", "severity", "title", "resolved"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "The private and public user authentication profiles."
+    },
+    "/providers/{providerId}": {
+      "schema": "BeautyProvider",
+      "description": "Beauty professionals public styling details, portfolio and trust indices."
+    },
+    "/bookings/{bookingId}": {
+      "schema": "Booking",
+      "description": "Couture wedding day bookings, pending confirmations, and fallback records."
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Ratings with automated AI screening analysis."
+    },
+    "/saved_providers/{savedId}": {
+      "schema": "SavedProvider",
+      "description": "Bookmarked beauty professional links for fast retrieval."
+    },
+    "/inspirations/{inspirationId}": {
+      "schema": "Inspiration",
+      "description": "Mood board elements detailing specific trial references."
+    },
+    "/planner_tasks/{taskId}": {
+      "schema": "PlannerTask",
+      "description": "ToCheck elements in the bride's personalized calendar tracker."
+    },
+    "/risk_alerts/{alertId}": {
+      "schema": "RiskAlert",
+      "description": "Founder audit logs and real-time security events."
+    }
+  }
+}

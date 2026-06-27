@@ -1,0 +1,6 @@
+{
+  "name": "BridalTrust",
+  "description": "A trust-first wedding beauty platform that helps brides discover, evaluate, compare, plan, and book beauty professionals with confidence.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
